@@ -3,9 +3,6 @@ import Store from './store'
 class Core {
   constructor () {
     this.cookies = {}
-    Store.on('updateView', (configData) => {
-      this.updateMenu(configData)
-    })
   }
   httpSend ({url, options}, resolve, reject) {
     fetch(url, options).then((response) => {
@@ -92,6 +89,23 @@ class Core {
     const path = parseURL.origin + parseURL.pathname
     return {authStr, path, options}
   }
+  generateParameter (authStr, path, data) {
+    if (authStr && authStr.startsWith('token')) {
+      data.params.unshift(authStr)
+    }
+    const parameter = {
+      url: path,
+      options: {
+        method: 'POST',
+        headers: {},
+        body: JSON.stringify(data)
+      }
+    }
+    if (authStr && authStr.startsWith('Basic')) {
+      parameter.options.headers['Authorization'] = authStr
+    }
+    return parameter
+  }
   // get aria2 version
   getVersion (rpcPath, element) {
     let data = {
@@ -101,70 +115,13 @@ class Core {
       params: []
     }
     const {authStr, path} = this.parseURL(rpcPath)
-    if (authStr && authStr.startsWith('token')) {
-      data.params.unshift(authStr)
-    }
-    const parameter = {
-      url: path,
-      options: {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }
-    }
-    if (authStr && authStr.startsWith('Basic')) {
-      Object.assign(parameter.options.headers, { Authorization: authStr })
-    }
-    this.sendToBackground('rpcVersion', parameter, (version) => {
+    this.sendToBackground('rpcVersion', this.generateParameter(authStr, path, data), (version) => {
       if (version) {
         element.innerText = `Aria2版本为: ${version}`
       } else {
         element.innerText = '错误,请查看是否开启Aria2'
       }
     })
-  }
-  // z-index resolve share page show problem
-  addMenu (element, position) {
-    const menu = `
-      <div id="exportMenu" class="g-dropdown-button">
-        <a class="g-button">
-          <span class="g-button-right">
-            <em class="icon icon-download"></em>
-            <span class="text">导出下载</span>
-          </span>
-        </a>
-        <div id="aria2List" class="menu" style="z-index:50;">
-          <a class="g-button-menu" id="aria2Text" href="javascript:void(0);">文本导出</a>
-          <a class="g-button-menu" id="settingButton" href="javascript:void(0);">设置</a>
-        </div>
-      </div>`
-    element.insertAdjacentHTML(position, menu)
-    const exportMenu = document.querySelector('#exportMenu')
-    exportMenu.addEventListener('mouseenter', () => {
-      exportMenu.classList.add('button-open')
-    })
-    exportMenu.addEventListener('mouseleave', () => {
-      exportMenu.classList.remove('button-open')
-    })
-    const settingButton = document.querySelector('#settingButton')
-    const settingMenu = document.querySelector('#settingMenu')
-    settingButton.addEventListener('click', () => {
-      settingMenu.classList.add('open-o')
-    })
-  }
-  resetMenu () {
-    document.querySelectorAll('.rpc-button').forEach((rpc) => {
-      rpc.remove()
-    })
-  }
-  updateMenu (configData) {
-    this.resetMenu()
-    const { rpcList } = configData
-    let rpcDOMList = ''
-    rpcList.forEach((rpc) => {
-      const rpcDOM = `<a class="g-button-menu rpc-button" href="javascript:void(0);" data-url=${rpc.url}>${rpc.name}</a>`
-      rpcDOMList += rpcDOM
-    })
-    document.querySelector('#aria2List').insertAdjacentHTML('afterbegin', rpcDOMList)
   }
   copyText (text) {
     const input = document.createElement('textarea')
@@ -212,21 +169,7 @@ class Core {
           rpcOption[key] = options[key]
         }
       }
-      if (authStr && authStr.startsWith('token')) {
-        rpcData.params.unshift(authStr)
-      }
-      const parameter = {
-        url: path,
-        options: {
-          method: 'POST',
-          body: JSON.stringify(rpcData)
-        }
-      }
-      // TODO 认证可以模块化
-      if (authStr && authStr.startsWith('Basic')) {
-        Object.assign(parameter.options.headers, { Authorization: authStr })
-      }
-      this.sendToBackground('rpcData', parameter, (success) => {
+      this.sendToBackground('rpcData', this.generateParameter(authStr, path, rpcData), (success) => {
         if (success) {
           this.showToast('下载成功!赶紧去看看吧~', 'success')
         } else {
@@ -252,13 +195,13 @@ class Core {
       }
       aria2CmdTxt.push(aria2CmdLine)
       aria2Txt.push(aria2Line)
-      const idmLine = ['<', file.link, this.getHeader('idm'), `out=${name}`, '>\r\n'].join('\r\n')
+      const idmLine = ['<', file.link, this.getHeader('idm'), `out=${name}`, '>'].join('\r\n')
       idmTxt.push(idmLine)
       downloadLinkTxt.push(file.link)
     })
     document.querySelector('#aria2CmdTxt').value = `${aria2CmdTxt.join('\n')}`
     document.querySelector('#aria2Txt').href = `${prefixTxt}${encodeURIComponent(aria2Txt.join('\n'))}`
-    document.querySelector('#idmTxt').href = `${prefixTxt}${encodeURIComponent(idmTxt.join('\r\n'))}`
+    document.querySelector('#idmTxt').href = `${prefixTxt}${encodeURIComponent(idmTxt.join('\r\n') + '\r\n')}`
     document.querySelector('#downloadLinkTxt').href = `${prefixTxt}${encodeURIComponent(downloadLinkTxt.join('\n'))}`
     document.querySelector('#copyDownloadLinkTxt').dataset.link = downloadLinkTxt.join('\n')
   }

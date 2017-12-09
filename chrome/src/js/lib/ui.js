@@ -1,11 +1,13 @@
 import Core from './core'
 import Store from './store'
-class Config {
+
+class UI {
   constructor () {
-    this.version = '0.9.9'
-    this.updateDate = '2017/10/02'
+    this.version = '1.0.1'
+    this.updateDate = '2017/12/06'
     Store.on('updateView', (configData) => {
       this.updateSetting(configData)
+      this.updateMenu(configData)
     })
   }
   init () {
@@ -13,7 +15,50 @@ class Config {
     this.addTextExport()
     Store.trigger('initConfigData')
   }
-
+  // z-index resolve share page show problem
+  addMenu (element, position) {
+    const menu = `
+      <div id="exportMenu" class="g-dropdown-button">
+        <a class="g-button">
+          <span class="g-button-right">
+            <em class="icon icon-download"></em>
+            <span class="text">导出下载</span>
+          </span>
+        </a>
+        <div id="aria2List" class="menu" style="z-index:50;">
+          <a class="g-button-menu" id="aria2Text" href="javascript:void(0);">文本导出</a>
+          <a class="g-button-menu" id="settingButton" href="javascript:void(0);">设置</a>
+        </div>
+      </div>`
+    element.insertAdjacentHTML(position, menu)
+    const exportMenu = document.querySelector('#exportMenu')
+    exportMenu.addEventListener('mouseenter', () => {
+      exportMenu.classList.add('button-open')
+    })
+    exportMenu.addEventListener('mouseleave', () => {
+      exportMenu.classList.remove('button-open')
+    })
+    const settingButton = document.querySelector('#settingButton')
+    const settingMenu = document.querySelector('#settingMenu')
+    settingButton.addEventListener('click', () => {
+      settingMenu.classList.add('open-o')
+    })
+  }
+  resetMenu () {
+    document.querySelectorAll('.rpc-button').forEach((rpc) => {
+      rpc.remove()
+    })
+  }
+  updateMenu (configData) {
+    this.resetMenu()
+    const { rpcList } = configData
+    let rpcDOMList = ''
+    rpcList.forEach((rpc) => {
+      const rpcDOM = `<a class="g-button-menu rpc-button" href="javascript:void(0);" data-url=${rpc.url}>${rpc.name}</a>`
+      rpcDOMList += rpcDOM
+    })
+    document.querySelector('#aria2List').insertAdjacentHTML('afterbegin', rpcDOMList)
+  }
   addTextExport () {
     const text = `
       <div id="textMenu" class="modal export-menu">
@@ -91,6 +136,15 @@ class Config {
               <div class="setting-menu-value">
                 <input type="checkbox" class="setting-menu-checkbox md5Check-s">
               </div>
+            </div><!-- /.setting-menu-row -->
+            <div class="setting-menu-row">
+               <div class="setting-menu-name">
+                 <label class="setting-menu-label">文件夹层数</label>
+               </div>
+               <div class="setting-menu-value">
+                 <input class="setting-menu-input small-o fold-s" type="number" spellcheck="false">
+                 <label class="setting-menu-label">(默认0表示不保留,-1表示保留完整路径)</label>
+               </div>
             </div><!-- /.setting-menu-row -->
             <div class="setting-menu-row">
               <div class="setting-menu-name">
@@ -199,7 +253,7 @@ class Config {
     testAria2.innerText = '测试连接，成功显示版本号'
   }
   updateSetting (configData) {
-    const { rpcList, configSync, md5Check, interval, downloadPath, userAgent, referer, headers } = configData
+    const { rpcList, configSync, md5Check, fold, interval, downloadPath, userAgent, referer, headers } = configData
     // reset dom
     document.querySelectorAll('.rpc-s').forEach((rpc, index) => {
       if (index !== 0) {
@@ -226,6 +280,7 @@ class Config {
     })
     document.querySelector('.configSync-s').checked = configSync
     document.querySelector('.md5Check-s').checked = md5Check
+    document.querySelector('.fold-s').value = fold
     document.querySelector('.interval-s').value = interval
     document.querySelector('.downloadPath-s').value = downloadPath
     document.querySelector('.userAgent-s').value = userAgent
@@ -244,6 +299,7 @@ class Config {
     }).filter(el => el)
     const configSync = document.querySelector('.configSync-s').checked
     const md5Check = document.querySelector('.md5Check-s').checked
+    const fold = Number.parseInt(document.querySelector('.fold-s').value)
     const interval = document.querySelector('.interval-s').value
     const downloadPath = document.querySelector('.downloadPath-s').value
     const userAgent = document.querySelector('.userAgent-s').value
@@ -254,6 +310,7 @@ class Config {
       rpcList,
       configSync,
       md5Check,
+      fold,
       interval,
       downloadPath,
       userAgent,
@@ -264,4 +321,4 @@ class Config {
   }
 }
 
-export default new Config()
+export default new UI()

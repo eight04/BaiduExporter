@@ -1,5 +1,5 @@
 import Core from './lib/core'
-import Config from './lib/config'
+import UI from './lib/ui'
 import Downloader from './lib/downloader'
 
 class Home extends Downloader {
@@ -12,16 +12,16 @@ class Home extends Downloader {
     }
     const listParameter = {
       search,
-      url: `/api/list`,
+      url: `/api/list?`,
       options: {
         credentials: 'include',
         method: 'GET'
       }
     }
     super(listParameter)
-    Config.init()
-    Core.requestCookies([{ url: 'http://pan.baidu.com/', name: 'BDUSS' }, { url: 'http://pcs.baidu.com/', name: 'pcsett' }])
-    Core.addMenu(document.querySelectorAll('.g-dropdown-button')[3], 'afterend')
+    UI.init()
+    UI.addMenu(document.querySelectorAll('.g-dropdown-button')[3], 'afterend')
+    Core.requestCookies([{ url: 'https://pan.baidu.com/', name: 'BDUSS' }, { url: 'https://pcs.baidu.com/', name: 'pcsett' }])
     Core.showToast('初始化成功!', 'success')
     this.mode = 'RPC'
     this.rpcURL = 'http://localhost:6800/jsonrpc'
@@ -78,7 +78,17 @@ class Home extends Downloader {
   }
   getPrefixLength () {
     const path = Core.getHashParameter('list/path') || Core.getHashParameter('path')
-    return path.length === 1 ? path.length : path.length + 1
+    const fold = Core.getConfigData('fold')
+    if (fold === -1) {
+      return 1
+    } else {
+      const dir = path.split('/')
+      let count = 0
+      for (let i = 0; i < dir.length - fold; i++) {
+        count = count + dir[i].length + 1
+      }
+      return count
+    }
   }
   getFiles (files) {
     const prefix = this.getPrefixLength()
